@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rproj.user
+
+# R session / build artifacts
+*.o
+*.so
+*.dll
+*.Rcheck/
