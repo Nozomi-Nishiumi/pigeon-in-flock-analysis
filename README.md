@@ -15,7 +15,9 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 │   │   ├── FL01/  FL02/  FL03/  # Three flocks (4 birds + a virtual centerpoint each)
 │   │   │   ├── original GPS data/    # Raw GPS logger output (lon/lat/alt)
 │   │   │   ├── earth_frame data/     # Time-synced, smoothed ECEF coordinates (.Rdata)
-│   │   │   ├── flock_frame data/     # Positions rotated into the flock frame (.Rdata, .csv)
+│   │   │   ├── flock_frame data/     # Flock-frame positions (.Rdata + per-bird CSVs);
+│   │   │   │                         #   also *_for_statistics.csv and
+│   │   │   │                         #   *_average_dist_of_#2-4.csv used by the tests
 │   │   │   └── visualized data/      # Visualisation outputs (PNG / HTML)
 │   ├── Day2_Drone_interception/  # Day of the drone attack (drone and pigeon trajectories)
 │   │   └── 20230319_RT_drone.csv / *_pigeon.csv / *_nozomi.csv / *_takao.csv
@@ -28,10 +30,16 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 │   └── list_perDay.Rdata
 │
 ├── figures/            # Figures used in the manuscript
-│   ├── bootstrap/             # Block-bootstrap p-value plots
+│   ├── bootstrap/             # Block-bootstrap p-value plots (legacy output location;
+│   │                          #   the current code writes new bootstrap plots to figures/statistics/)
+│   ├── statistics/            # ESS-adjusted Welch t-test plot; current block-bootstrap output
 │   ├── closeness/             # Deviation from the flock centre (time series, boxplots)
 │   ├── distribution/          # Position distributions in the flock frame (xy, yz)
 │   └── trajectories/          # Flight trajectories on a map (fore-aft / altitude colour-coded)
+│
+├── tables/             # Statistical result tables
+│   └── statistics/
+│       └── TableS1_drone_data_properties.csv   # Per-series ESS, mean, 95% CI, Welch p-value
 │
 ├── materials/          # Map data used for rendering
 │   └── map.RData
@@ -43,8 +51,9 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
     ├── ECEF_to_Flock_frame.R        # ECEF → flock frame (fore-aft y / vertical z)
     ├── visualization.R              # Trajectory and position-distribution plots
     ├── aggregation_analysis.R       # Aggregation analysis of the non-experienced birds (#2–#4)
-    ├── bootstrap_test.R             # Two-sample block-bootstrap test
-    ├── bootstrap_fast.cpp           # Fast C++ implementation of the test (Rcpp)
+    ├── T_test_ESS.R                 # Primary statistical test: ESS-adjusted Welch t-test + Fisher combine
+    ├── bootstrap_test.R             # Additional block-bootstrap comparison across the same series
+    ├── bootstrap_fast.cpp           # Fast C++ implementation of the block bootstrap (Rcpp)
     ├── calibrate_bootstrap.R        # Standalone calibration check for the block bootstrap (not part of main.R)
     ├── velocity_analysis.R          # Flight-speed analysis
     └── common_functions.R           # Shared utilities (coordinate transforms, rotations, plotting)
@@ -63,18 +72,24 @@ Open `source_code/R_script.Rproj` in RStudio first — this is required so that 
 
      Each flock contains five series:
      - `#1` … the target bird that experienced the drone attack (drone-experienced)
-     - `#2`–`#4` … the other birds in the same flock (flockmates)
+     - `#2`–`#4` … the other birds in the same flock (Non-Threatened flockmates)
      - `#5(centerpoint)` … the centroid of `#2`–`#4` (a virtual centre point)
 
-     The output is written to `flock_frame data/` as CSV and Rdata.
+     For each flock, three kinds of CSVs (plus one Rdata) are written to `flock_frame data/`:
+     - `flockframe_..._#1.csv` … `#5(centerpoint).csv` — per-bird flock-frame coordinates. Each row of `#1`–`#4` includes `dist_to_center_of_NT`, the distance from that bird to the centroid of the Non-Threatened three (`#2`–`#4`).
+     - `flockframe_..._average_dist_of_#2-4.csv` — per-frame `ave.dist_to_center_of_NT` (mean of `#2`–`#4`'s distances to their own centroid), used as the aggregation metric of the Non-Threatened birds.
+     - `flockframe_..._for_statistics.csv` — the focal bird's position (`focal_x_dist`, `focal_y_dist`, `focal_z_dist`, `focal_3d_dist`) alongside `nt_ave_3d_dist`; this is the direct input to the Welch t-test in `T_test_ESS.R`.
 2. **Visualisation**
    - `visualization.R`: plots flight trajectories on a map, xy/yz position distributions in the flock frame, and 3D scenes.
-3. **Statistical testing** (`bootstrap_test.R::full_analysis()`)
-   - Compares the target bird `#1` between Day 1 and Day 3 on **y** (fore–aft position) and **z** (altitude) using a block bootstrap.
-   - Compares the aggregation of `#2`–`#4` (mean distance to their own centroid; `ave.dist_center_of_three`) between Day 1 and Day 3 in the same way.
-   - Runs both the per-flock analysis (FL01/02/03) and a combined multi-stream analysis across the three flocks, sweeping block size to check the stability of the p-values.
-4. **Additional aggregation analysis**
+3. **Additional aggregation analysis**
    - `aggregation_analysis.R`: plots the deviation from the flock centre over time, against distance to the drone interception area, and as boxplots.
+4. **Statistical testing**
+   - `T_test_ESS.R::T_test_ESS_analysis()` — the manuscript's primary test. For every (metric × flock × pre/post) series in `flockframe_..._for_statistics.csv`, it estimates the effective sample size (`coda::effectiveSize`), computes an ESS-based mean and 95% CI, then runs a Welch t-test comparing Day 1 vs Day 3 with the ESS as the degrees-of-freedom proxy. Per-flock p-values are combined across the three flocks by Fisher's method. Outputs: `tables/statistics/TableS1_drone_data_properties.csv` (per-series stats) and `figures/statistics/drone_analysis_plot.png` (four-panel summary).
+   - `bootstrap_test.R::full_analysis()` — additional block-bootstrap check on the same comparisons, called three times from `main.R`:
+     - `full_analysis(birdid = "#1", type = "y")` — focal bird's fore–aft position
+     - `full_analysis(birdid = "#1", type = "z")` — focal bird's altitude
+     - `full_analysis(birdid = "average_dist_of_#2-4", type = "ave.dist_to_center_of_NT")` — Non-Threatened aggregation
+     Each call sweeps block size and runs both the per-flock analysis (FL01/02/03) and a combined multi-stream analysis to check the stability of the p-values. Current code writes the resulting PNGs to `figures/statistics/`; earlier outputs still under `figures/bootstrap/` are the legacy location.
 
 ### Supplementary: bootstrap calibration check
 
