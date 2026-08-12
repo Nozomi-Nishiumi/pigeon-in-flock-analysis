@@ -42,8 +42,8 @@ for(dir in dir_list){
     
     savedir=paste0(basedir,"/figures/distribution")
     dir.create(savedir, recursive = TRUE, showWarnings = FALSE)
-    draw2d(object_crop$rot,F,15,F,T,F,F,NULL,paste0(savedir,"/distribution_xy_",prop,".png"),"backON")
-    draw2d(object_crop$rot,T,15,F,T,F,F,NULL,paste0(savedir,"/distribution_yz_",prop,".png"),"backON")
+    draw2d(object_crop$rot,F,15,F,T,F,F,NULL,paste0(savedir,"/distribution_xy_",prop,".png"),"backOFF")
+    draw2d(object_crop$rot,T,15,F,T,F,F,NULL,paste0(savedir,"/distribution_yz_",prop,".png"),"backOFF")
     
     
     

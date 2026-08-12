@@ -56,25 +56,27 @@ for(dir in dir_list){
   object=c(list(objects),list(rot_objects), list(lonlat_sync2))
   names(object)=c("ori","rot","ori_geo")
   
-  # add distance to the center of #2-#4, "dist_center_of_three"
+  # add distance to the center of Non-Threatened ones(#2-#4), "dist_to_center_of_NT"
   center_flockmates=getMean(object$rot[2:4])
-  object$rot=addDistance(object$rot,center_flockmates$x,"dist_center_of_three")
+  object$rot=addDistance(object$rot,center_flockmates$x,"dist_to_center_of_NT")
   
-  # #5 data update 
-  # $ave.dist_center_of_all is the average distance of individuals #2–#4 to the flock center  
-  # $ave.dist_center_of_three is the average distance of individuals #2–#4 to the center of #2-#4
-
-  object$rot[[5]]$x=data.frame(object$rot[[5]]$x,
-                               ave.dist_center_of_all=getMean(object$rot[2:4])$x$norm,
-                               ave.dist_center_of_three=getMean(object$rot[2:4])$x$dist_center_of_three)
-    
-    
+ 
   # save(object, file="./transformed data/final product/parameters_no_crop.Rdata")
   
   
   
   #select data in cruise, faster than a flight velocity threshold
   object_crop=crop_longestDuration(object,vlim)
+  
+  # $ave.dist_center_of_all is the average distance of individuals #2–#4 to the flock center  
+  # $ave.dist_center_of_three is the average distance of individuals #2–#4 to the center of the Non-Threatened three 
+  average_data=data.frame("ave.dist_to_center_of_all"=getMean(object_crop$rot[2:4])$x$norm,
+                          "ave.dist_to_center_of_NT"=getMean(object_crop$rot[2:4])$x$dist_to_center_of_NT)
+  
+  data_for_statistics=data.frame(object_crop$rot[[1]]$x[,1:5],
+                                 "ave.dist_to_center_of_NT"=getMean(object_crop$rot[2:4])$x$dist_to_center_of_NT)
+  
+  colnames(data_for_statistics)=c("sec","focal_x_dist","focal_y_dist","focal_z_dist","focal_3d_dist","nt_ave_3d_dist")
   
   # check_croprange(list(object,object_crop),"./visualized data/croprange.png")
   parts <- strsplit(dir, "/")[[1]]
@@ -90,7 +92,11 @@ for(dir in dir_list){
     }
     write.csv(object_crop$rot[[individual]]$x,paste0(savedir,"flockframe_",prop,"_#",individual,suffix,".csv"))
   }
+
+  write.csv(average_data,paste0(savedir,"flockframe_",prop,"_average_dist_of_#2-4.csv"))
+  write.csv(data_for_statistics,paste0(savedir,"flockframe_",prop,"_for_statistics.csv"))
   
+    
   filepath=paste0(basedir,"/derived_Rdata/")
   dir.create(filepath, recursive = TRUE, showWarnings = FALSE)
   save(object, object_crop, file=paste0(filepath,"flockframe_",prop,".Rdata"))

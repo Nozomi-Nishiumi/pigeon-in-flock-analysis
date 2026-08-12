@@ -33,7 +33,7 @@ for(i in Day){
     
     dev<-data.frame(matrix(rep(NA, length(2)), ncol=3))[,numeric(0)]
     for(individual in 1:(obj_num-1)){
-      dev=cbind(dev, object_crop$rot[[individual]]$x$dist_center_of_three)
+      dev=cbind(dev, object_crop$rot[[individual]]$x$dist_to_center_of_NT)
       colnames(dev)[individual]=paste0("P",individual)
     }
     ave <- apply(dev, 1,mean)

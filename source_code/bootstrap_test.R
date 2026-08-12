@@ -199,7 +199,7 @@ scan_p_blocksize_multistream <- function(X1, X2, bs = seq(50, 1500, 50),
 full_analysis <- function(Nbs = 1e6, birdid="#1", type = "y") {
   set.seed(123)
 
-  savedir=paste0(basedir,"/figures/bootstrap")
+  savedir=paste0(basedir,"/figures/statistics")
   dir.create(savedir, recursive = TRUE, showWarnings = FALSE)
   setwd(savedir)
   graphics.off()
