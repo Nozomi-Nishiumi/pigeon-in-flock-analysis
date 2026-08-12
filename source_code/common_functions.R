@@ -23,6 +23,13 @@ targetPackages <- c(
 
 newPackages <- targetPackages[!(targetPackages %in% installed.packages()[,"Package"])]
 if(length(newPackages)) install.packages(newPackages, repos = "http://cran.us.r-project.org")
+
+# rgl in headless (null) mode: drawScene()/localScene() only need to export
+# HTML via rglwidget(); we do not want an OpenGL window (avoids X11/GLX
+# errors on macOS without XQuartz, and lets the pipeline run in RStudio /
+# Rscript without a display). Must be set BEFORE library(rgl) below.
+options(rgl.useNULL = TRUE)
+
 for(package in targetPackages) library(package, character.only = T)
 
 
