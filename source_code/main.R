@@ -29,8 +29,8 @@ source(paste0(basedir,"/source_code/aggregation_analysis.R"))
 
 #statistical analysis
 T_test_ESS_analysis()
-
- #additional bootstrap analysis
-full_analysis(birdid="#1", type = "y")
-full_analysis(birdid="#1", type = "z")
-full_analysis(birdid="average_dist_of_#2-4", type = "ave.dist_to_center_of_NT")
+# 
+#  #additional bootstrap analysis
+# full_analysis(birdid="#1", type = "y")
+# full_analysis(birdid="#1", type = "z")
+# full_analysis(birdid="average_dist_of_#2-4", type = "ave.dist_to_center_of_NT")
