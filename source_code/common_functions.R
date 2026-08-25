@@ -633,7 +633,46 @@ huelisting<-function(num){
   return(colis)
 }
 
-draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filename=NULL,backOFF="backON"){
+# Common density scale for draw2d(): one KDE bandwidth and one set of contour
+# levels shared by every series, so that the same contour line means the same
+# density in every panel (fair comparison across days and flocks).
+#   series_list - list of data.frames holding the columns dim1, dim2
+#   Returns list(h=c(h1,h2), breaks=contour levels)
+sharedDensityScale<-function(series_list,dim1="x",dim2="y",n_breaks=10){
+  ok=sapply(series_list,function(d)sd(d[[dim1]])>0.0001&sd(d[[dim2]])>0.0001)
+  series_list=series_list[ok]
+  # median of the per-series normal-reference bandwidths: a representative
+  # smoothing level that is not inflated by between-flock spread (pooling
+  # all series into one bandwidth.nrd() call would oversmooth)
+  h=c(median(sapply(series_list,function(d)bandwidth.nrd(d[[dim1]]))),
+      median(sapply(series_list,function(d)bandwidth.nrd(d[[dim2]]))))
+  # the highest density any series reaches under the shared bandwidth sets
+  # the top of the common contour ladder
+  maxd=0
+  for(d in series_list){
+    k=kde2d(d[[dim1]],d[[dim2]],h=h,n=100)
+    maxd=max(maxd,max(k$z))
+  }
+  breaks=pretty(c(0,maxd),n_breaks)
+  breaks=breaks[breaks>0&breaks<maxd]
+  return(list(h=h,breaks=breaks))
+}
+
+# Density levels enclosing given probability masses for one kde2d() result.
+# For each p in probs, returns the density value whose superlevel set
+# (highest-density region) contains fraction p of the total mass.
+massToDensityLevels<-function(k,probs){
+  cell=diff(k$x[1:2])*diff(k$y[1:2])
+  z=sort(as.vector(k$z),decreasing=T)
+  cm=cumsum(z)*cell
+  sapply(probs,function(p){
+    hit=which(cm>=p)
+    if(length(hit)==0)return(min(z))
+    z[hit[1]]
+  })
+}
+
+draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filename=NULL,backOFF="backON",h=NULL,breaks=NULL,mass_probs=NULL){
   if(yz){
     objects=swap2(objects)
   }
@@ -685,7 +724,15 @@ draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filen
                       colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=1),data = segment[timestep,])
     slist<-c(slist,list(seg))
     
-    x.top=max.location_KDE(segment$x.x,segment$x.y)
+    if(!is.null(h)){
+      # position mode from the SAME shared-bandwidth KDE as the isopleths,
+      # so the marker always falls inside the innermost contour
+      x.top=max.location_KDE(segment$x.x,segment$x.y,h=h,
+              lims=c(min(segment$x.x)-3*h[1],max(segment$x.x)+3*h[1],
+                     min(segment$x.y)-3*h[2],max(segment$x.y)+3*h[2]))
+    }else{
+      x.top=max.location_KDE(segment$x.x,segment$x.y)
+    }
     v.top=max.location_KDE(segment$v.x,segment$v.y)
     top=data.frame(x.x=x.top$x,x.y=x.top$y,v.x=v.top$x,v.y=v.top$y)
     mseg<-geom_segment(aes(x =x.x, y = x.y, xend = x.x+v.x/100, yend =  x.y+v.y/100), 
@@ -694,8 +741,31 @@ draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filen
     mslist<-c(mslist,list(mseg))
     
     if(sd(obj$x$x)>0.0001){
-      density<-geom_density2d(aes(x=x, y=y),
-                              colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=obj$x)
+      if(!is.null(mass_probs)&&!is.null(h)){
+        # probability-mass isopleths: each line encloses the fraction of this
+        # bird's positions given in mass_probs (e.g. 0.9 = smallest region
+        # holding 90% of its time). The bandwidth h is shared across panels,
+        # so region sizes are directly comparable between days and flocks.
+        k=kde2d(obj$x$x,obj$x$y,h=h,n=100,
+                lims=c(min(obj$x$x)-3*h[1],max(obj$x$x)+3*h[1],
+                       min(obj$x$y)-3*h[2],max(obj$x$y)+3*h[2]))
+        grid_df=expand.grid(x=k$x,y=k$y)
+        grid_df$z=as.vector(k$z)
+        density<-geom_contour(aes(x=x,y=y,z=z),
+                              breaks=unique(massToDensityLevels(k,mass_probs)),
+                              colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),linewidth=0.5,data=grid_df)
+      }else if(is.null(h)||is.null(breaks)){
+        # per-series automatic bandwidth and contour levels (not comparable
+        # between panels)
+        density<-geom_density2d(aes(x=x, y=y),
+                                colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=obj$x)
+      }else{
+        # shared scale from sharedDensityScale(): identical contour lines
+        # represent identical densities in every panel
+        density<-geom_density2d(aes(x=x, y=y),
+                                colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=obj$x,
+                                h=h,breaks=breaks)
+      }
       dlist=c(dlist,list(density))
     }
     
@@ -1086,8 +1156,13 @@ crop_longestDuration<-function(object, vlim){
 }
 
 
-max.location_KDE<-function(x,y,n=100){
-  rd=kde2d(x=x,y=y,h=c(bandwidth.nrd(x),bandwidth.nrd(y)),n=n)
+max.location_KDE<-function(x,y,n=100,h=NULL,lims=NULL){
+  # h/lims default to the legacy per-series behaviour; pass the shared
+  # bandwidth (and matching lims) to make the mode consistent with the
+  # shared-scale isopleths drawn in draw2d()
+  if(is.null(h))h=c(bandwidth.nrd(x),bandwidth.nrd(y))
+  if(is.null(lims))lims=c(range(x),range(y))
+  rd=kde2d(x=x,y=y,h=h,n=n,lims=lims)
   m=max(rd$z)
   rowcol_ <- which(rd$z==m)
   row_=(rowcol_ - 1) %/% nrow(rd$z) + 1
