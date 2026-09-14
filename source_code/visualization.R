@@ -53,13 +53,13 @@ for(dir in dir_list){
     dir.create("visualized data", showWarnings = FALSE)
     localScene(300,7000,object_crop$ori,"./visualized data/entirescene")
     localScene(300,7000,object_crop$rot,"./visualized data/formation")
-    draw2d(object_crop$rot,F,15,F,T,F,F,NULL,"./visualized data/distribution_xy.png","backON",h=h_shared,mass_probs=mass_probs)
-    draw2d(object_crop$rot,T,15,F,T,F,F,NULL,"./visualized data/distribution_yz.png","backON",h=h_shared,mass_probs=mass_probs)
+    draw2d(object_crop$rot,c("x","y"),15,F,T,F,F,NULL,"./visualized data/distribution_xy.png","backON",h=h_shared,mass_probs=mass_probs)
+    draw2d(object_crop$rot,c("x","z"),15,F,T,F,F,NULL,"./visualized data/distribution_xz.png","backON",h=h_shared,mass_probs=mass_probs)
 
     savedir=paste0(basedir,"/figures/distribution")
     dir.create(savedir, recursive = TRUE, showWarnings = FALSE)
-    draw2d(object_crop$rot,F,15,F,T,F,F,NULL,paste0(savedir,"/distribution_xy_",prop,".png"),"backOFF",h=h_shared,mass_probs=mass_probs)
-    draw2d(object_crop$rot,T,15,F,T,F,F,NULL,paste0(savedir,"/distribution_yz_",prop,".png"),"backOFF",h=h_shared,mass_probs=mass_probs)
+    draw2d(object_crop$rot,c("x","y"),15,F,T,F,F,NULL,paste0(savedir,"/distribution_xy_",prop,".png"),"backOFF",h=h_shared,mass_probs=mass_probs)
+    draw2d(object_crop$rot,c("x","z"),15,F,T,F,F,NULL,paste0(savedir,"/distribution_xz_",prop,".png"),"backOFF",h=h_shared,mass_probs=mass_probs)
     
     
     

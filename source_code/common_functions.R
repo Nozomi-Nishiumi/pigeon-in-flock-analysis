@@ -672,10 +672,15 @@ massToDensityLevels<-function(k,probs){
   })
 }
 
-draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filename=NULL,backOFF="backON",h=NULL,breaks=NULL,mass_probs=NULL){
-  if(yz){
-    objects=swap2(objects)
+# axes: which flock-frame coordinates go on the horizontal and vertical axis,
+# e.g. c("x","y") (top view) or c("x","z") (side view). Positions and
+# velocities are projected explicitly onto these two columns as a1/a2 (no
+# column relabelling), so a1/a2 always mean "plotted axis 1 / axis 2".
+draw2d<-function(objects,axes=c("x","y"),range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filename=NULL,backOFF="backON",h=NULL,breaks=NULL,mass_probs=NULL){
+  if(length(axes)!=2||!all(axes%in%c("x","y","z"))||axes[1]==axes[2]){
+    stop("axes must be two distinct names among x, y, z")
   }
+  project<-function(d)data.frame(sec=d$sec,a1=d[[axes[1]]],a2=d[[axes[2]]])
   
   obj_num=length(objects)
   timedif=abs(objects[[obj_num]]$x$sec-time)
@@ -701,25 +706,26 @@ draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filen
   draw<-ggplot()
   
   for(i in 1:length(objects)){
-    obj=objects[[i]]
+    pos=project(objects[[i]]$x)   # positions on the plotted axes
+    vel=project(objects[[i]]$v)   # velocities on the plotted axes
     
-    line<-geom_path(aes(x = x, y = y), 
-                    colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),data = obj$x)
+    line<-geom_path(aes(x = a1, y = a2), 
+                    colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),data = pos)
     llist=c(llist,list(line))
     
-    point<-geom_point(aes(x = x, y = y), 
+    point<-geom_point(aes(x = a1, y = a2), 
                       colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=1),size=5, 
-                      data=obj$x[timestep,])
+                      data=pos[timestep,])
     plist<-c(plist,list(point))
     
-    m=data.frame(x=mean(obj$x$x),y=mean(obj$x$y),z=mean(obj$x$z))
-    mp<-geom_point(aes(x = x, y = y), 
+    m=data.frame(a1=mean(pos$a1),a2=mean(pos$a2))
+    mp<-geom_point(aes(x = a1, y = a2), 
                    colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=1),size=2, 
                    data=m)
     mlist<-c(mlist,list(mp))
     
-    segment=cbind(x=obj$x,v=obj$v)
-    seg<-geom_segment(aes(x = x.x, y = x.y, xend = x.x+v.x/3, yend =  x.y+v.y/3), 
+    segment=data.frame(p1=pos$a1,p2=pos$a2,v1=vel$a1,v2=vel$a2)
+    seg<-geom_segment(aes(x = p1, y = p2, xend = p1+v1/3, yend = p2+v2/3), 
                       arrow = arrow(length = unit(0.05, "inches"),type = "closed"), linejoin = "mitre",
                       colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=1),data = segment[timestep,])
     slist<-c(slist,list(seg))
@@ -727,43 +733,43 @@ draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filen
     if(!is.null(h)){
       # position mode from the SAME shared-bandwidth KDE as the isopleths,
       # so the marker always falls inside the innermost contour
-      x.top=max.location_KDE(segment$x.x,segment$x.y,h=h,
-              lims=c(min(segment$x.x)-3*h[1],max(segment$x.x)+3*h[1],
-                     min(segment$x.y)-3*h[2],max(segment$x.y)+3*h[2]))
+      x.top=max.location_KDE(pos$a1,pos$a2,h=h,
+              lims=c(min(pos$a1)-3*h[1],max(pos$a1)+3*h[1],
+                     min(pos$a2)-3*h[2],max(pos$a2)+3*h[2]))
     }else{
-      x.top=max.location_KDE(segment$x.x,segment$x.y)
+      x.top=max.location_KDE(pos$a1,pos$a2)
     }
-    v.top=max.location_KDE(segment$v.x,segment$v.y)
-    top=data.frame(x.x=x.top$x,x.y=x.top$y,v.x=v.top$x,v.y=v.top$y)
-    mseg<-geom_segment(aes(x =x.x, y = x.y, xend = x.x+v.x/100, yend =  x.y+v.y/100), 
+    v.top=max.location_KDE(vel$a1,vel$a2)
+    top=data.frame(p1=x.top$x,p2=x.top$y,v1=v.top$x,v2=v.top$y)
+    mseg<-geom_segment(aes(x = p1, y = p2, xend = p1+v1/100, yend = p2+v2/100), 
                        arrow = arrow(length = unit(arrowhead_size, "inches")), linejoin = "mitre", linewidth=arrow_size,
                        colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=1), data=top)
     mslist<-c(mslist,list(mseg))
     
-    if(sd(obj$x$x)>0.0001){
+    if(sd(pos$a1)>0.0001){
       if(!is.null(mass_probs)&&!is.null(h)){
         # probability-mass isopleths: each line encloses the fraction of this
         # bird's positions given in mass_probs (e.g. 0.9 = smallest region
         # holding 90% of its time). The bandwidth h is shared across panels,
         # so region sizes are directly comparable between days and flocks.
-        k=kde2d(obj$x$x,obj$x$y,h=h,n=100,
-                lims=c(min(obj$x$x)-3*h[1],max(obj$x$x)+3*h[1],
-                       min(obj$x$y)-3*h[2],max(obj$x$y)+3*h[2]))
-        grid_df=expand.grid(x=k$x,y=k$y)
-        grid_df$z=as.vector(k$z)
-        density<-geom_contour(aes(x=x,y=y,z=z),
+        k=kde2d(pos$a1,pos$a2,h=h,n=100,
+                lims=c(min(pos$a1)-3*h[1],max(pos$a1)+3*h[1],
+                       min(pos$a2)-3*h[2],max(pos$a2)+3*h[2]))
+        grid_df=expand.grid(a1=k$x,a2=k$y)
+        grid_df$dens=as.vector(k$z)
+        density<-geom_contour(aes(x=a1,y=a2,z=dens),
                               breaks=unique(massToDensityLevels(k,mass_probs)),
                               colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),linewidth=0.5,data=grid_df)
       }else if(is.null(h)||is.null(breaks)){
         # per-series automatic bandwidth and contour levels (not comparable
         # between panels)
-        density<-geom_density2d(aes(x=x, y=y),
-                                colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=obj$x)
+        density<-geom_density2d(aes(x=a1, y=a2),
+                                colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=pos)
       }else{
         # shared scale from sharedDensityScale(): identical contour lines
         # represent identical densities in every panel
-        density<-geom_density2d(aes(x=x, y=y),
-                                colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=obj$x,
+        density<-geom_density2d(aes(x=a1, y=a2),
+                                colour = hsv(col_list[i], sat_list[i], val_list[i], alpha=0.5),size=0.5,data=pos,
                                 h=h,breaks=breaks)
       }
       dlist=c(dlist,list(density))
@@ -781,21 +787,16 @@ draw2d<-function(objects,yz=T,range,path=F,dnsty=F,mn=F,drawcp=F,time=NULL,filen
   
   if(!is.null(time)){
     draw<-draw+plist+slist
-    loc=objects[[length(objects)]]$x[timestep,]
+    loc=project(objects[[length(objects)]]$x)[timestep,]
   }else{
     draw<-draw+mslist
-    loc=data.frame(x=c(0),y=c(0),z=c(0))
+    loc=data.frame(a1=c(0),a2=c(0))
   }
   
-  area=data.frame(x=c(loc$x-range,loc$x+range),
-                  y=c(loc$y-range,loc$y+range),
-                  z=c(loc$z-range,loc$z+range))
-  draw<-draw+coord_cartesian(xlim = area$x, ylim = area$y)
-  if(yz){
-    draw<-draw+xlab("x (m)")+ylab("z (m)")
-  }else{
-    draw<-draw+xlab("x (m)")+ylab("y (m)")
-  }
+  area=data.frame(a1=c(loc$a1-range,loc$a1+range),
+                  a2=c(loc$a2-range,loc$a2+range))
+  draw<-draw+coord_cartesian(xlim = area$a1, ylim = area$a2)
+  draw<-draw+xlab(paste0(axes[1]," (m)"))+ylab(paste0(axes[2]," (m)"))
   
   
   draw<-draw+theme(
@@ -1022,22 +1023,6 @@ swap<-function(obj){
   return(obj)
 }
 
-swap2<-function(obj){
-  if(is.list(obj)&!is.data.frame(obj)){
-    for(i in 1:length(obj)){
-      obj[[i]]=swap2(obj[[i]])
-    }
-  }else{
-    if(ncol(obj)>=4){
-      name=colnames(obj)
-      index=1:length(name)
-      index[2:4]=c(2,4,3)
-      obj=obj[,index]
-      colnames(obj)=name
-    }
-  }
-  return(obj)
-}
 
 labeling<-function(obj,lab){
   if(is.list(obj)&!is.data.frame(obj)){

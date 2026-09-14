@@ -34,7 +34,7 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 │   │                          #   the current code writes new bootstrap plots to figures/statistics/)
 │   ├── statistics/            # ESS-adjusted Welch t-test plot; current block-bootstrap output
 │   ├── closeness/             # Deviation from the flock centre (time series, boxplots)
-│   ├── distribution/          # Position distributions in the flock frame (xy, yz)
+│   ├── distribution/          # Position distributions in the flock frame (xy, xz)
 │   └── trajectories/          # Flight trajectories on a map (fore-aft / altitude colour-coded)
 │
 ├── tables/             # Statistical result tables
@@ -80,7 +80,7 @@ Open `source_code/R_script.Rproj` in RStudio first — this is required so that 
      - `flockframe_..._average_dist_of_#2-4.csv` — per-frame `ave.dist_to_center_of_NT` (mean of `#2`–`#4`'s distances to their own centroid), used as the aggregation metric of the Non-Threatened birds.
      - `flockframe_..._for_statistics.csv` — the focal bird's position (`focal_x_dist`, `focal_y_dist`, `focal_z_dist`, `focal_3d_dist`) alongside `nt_ave_3d_dist`; this is the direct input to the Welch t-test in `T_test_ESS.R`.
 2. **Visualisation**
-   - `visualization.R`: plots flight trajectories on a map, xy/yz position distributions in the flock frame, and 3D scenes.
+   - `visualization.R`: plots flight trajectories on a map, xy/xz position distributions in the flock frame, and 3D scenes.
 3. **Additional aggregation analysis**
    - `aggregation_analysis.R`: plots the deviation from the flock centre over time, against distance to the drone interception area, and as boxplots.
 4. **Statistical testing**
