@@ -13,7 +13,8 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 ├── csv/                 # Raw and intermediate data from the experiment
 │   ├── Day1_Pre_drone/        # Day before the drone attack (baseline)
 │   │   ├── FL01/  FL02/  FL03/  # Three flocks (4 birds + a virtual centerpoint each)
-│   │   │   ├── original GPS data/    # Raw GPS logger output (lon/lat/alt)
+│   │   │   ├── original GPS data/    # Raw GPS logger output (lon/lat/alt);
+│   │   │   │                         #   <logger>_<session>_Flock<k>_#N_<band ID>.csv
 │   │   │   ├── earth_frame data/     # Time-synced, smoothed ECEF coordinates (.Rdata)
 │   │   │   ├── flock_frame data/     # Flock-frame positions (.Rdata + per-bird CSVs);
 │   │   │   │                         #   also *_for_statistics.csv and
@@ -74,6 +75,8 @@ Open `source_code/R_script.Rproj` in RStudio first — this is required so that 
      - `#1` … the target bird that experienced the drone attack (drone-experienced)
      - `#2`–`#4` … the other birds in the same flock (Non-Threatened flockmates)
      - `#5(centerpoint)` … the centroid of `#2`–`#4` (a virtual centre point)
+
+     The index N comes from the `_#N_` tag in the raw GPS file name (`<logger serial>_<session>_Flock<k>_#N_<band ID>.csv`), so the same bird keeps the same number on both days regardless of which logger it carried; `GPS_to_ECEF.R` orders the files by this tag. The drone-experienced bird (`#1`) additionally carries `_drone` in its file name.
 
      For each flock, three kinds of CSVs (plus one Rdata) are written to `flock_frame data/`:
      - `flockframe_..._#1.csv` … `#5(centerpoint).csv` — per-bird flock-frame coordinates. Each row of `#1`–`#4` includes `dist_to_center_of_NT`, the distance from that bird to the centroid of the Non-Threatened three (`#2`–`#4`).

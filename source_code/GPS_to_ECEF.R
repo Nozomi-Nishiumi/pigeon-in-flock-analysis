@@ -37,10 +37,18 @@ for(dir in dir_list){
   # files=subset(files,regexpr("xyz", files)<0)
   # files=subset(files,regexpr("#", files)<0)
   
-  index=1:length(files)
-  dindex=grep("_drone",files)
-  ordered=c(dindex,index[-dindex])
-  files=files[ordered]
+  # Individual index is fixed by the "_#N_" token in each raw file name
+  # (same bird = same number on every day; #1 is the drone-experienced bird,
+  # whose name also keeps the "_drone" tag). Ordering by N makes list element
+  # i always bird #i, independent of GPS-logger serial numbers.
+  bird_no=as.integer(sub(".*_#([0-9]+)_.*","\\1",files))
+  if(any(is.na(bird_no))||any(duplicated(bird_no))){
+    stop("raw GPS file names must carry unique _#N_ tags: ",paste(files,collapse=", "))
+  }
+  files=files[order(bird_no)]
+  if(!grepl("_drone",files[1])){
+    stop("bird #1 must be the drone-experienced individual (_drone): ",files[1])
+  }
   data=list()
   for (file.name in files) {
     data<-c(data,list(read.csv(file.name,header=F)[,1:4]))
