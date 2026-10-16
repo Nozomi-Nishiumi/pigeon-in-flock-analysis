@@ -13,7 +13,7 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 ├── csv/                 # Raw and intermediate data from the experiment
 │   ├── Day1_Pre_drone/        # Day before the drone attack (baseline)
 │   │   ├── FL01/  FL02/  FL03/  # Three flocks (4 birds + a virtual centerpoint each)
-│   │   │   ├── original GPS data/    # Raw GPS logger output (lon/lat/alt);
+│   │   │   ├── original GPS data/    # Raw GPS logger output, header row: timestamp, latitude, longitude, altitude;
 │   │   │   │                         #   <logger>_<session>_Flock<k>_#N_<band ID>.csv
 │   │   │   ├── earth_frame data/     # Time-synced, smoothed ECEF coordinates (.Rdata)
 │   │   │   ├── flock_frame data/     # Flock-frame positions (.Rdata + per-bird CSVs);
@@ -65,7 +65,7 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 Open `source_code/R_script.Rproj` in RStudio first — this is required so that `here::here()` is anchored correctly (see [How to run](#how-to-run)). Then, using `source_code/main.R` as the entry point, the pipeline runs in the following order.
 
 1. **Coordinate transformation**
-   - `GPS_to_ECEF.R`: converts raw GPS (lon/lat/alt) into ECEF, time-syncing all streams to 5 fps and smoothing them.
+   - `GPS_to_ECEF.R`: converts raw GPS (columns timestamp, latitude, longitude, altitude) into ECEF, time-syncing all streams to 5 fps and smoothing them.
    - `ECEF_to_Flock_frame.R`: rotates each flock's coordinates using its mean heading to produce the **flock frame**:
      - **x**: lateral (left–right with respect to the heading)
      - **y**: fore–aft (**positive = forward**)

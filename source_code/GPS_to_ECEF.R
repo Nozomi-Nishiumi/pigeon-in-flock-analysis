@@ -51,7 +51,8 @@ for(dir in dir_list){
   }
   data=list()
   for (file.name in files) {
-    data<-c(data,list(read.csv(file.name,header=F)[,1:4]))
+    # raw files carry a header: timestamp,latitude,longitude,altitude
+    data<-c(data,list(read.csv(file.name,header=T)[,1:4]))
   }
   
   if(ORDER_longi_lati){
