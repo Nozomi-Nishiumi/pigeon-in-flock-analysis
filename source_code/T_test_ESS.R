@@ -166,8 +166,8 @@ T_test_ESS_analysis<-function(){
   from the flock center",
     "B: The threatened bird's position 
     along high-low axis",
-    "D: Non-threatened birds' distance 
-  from their center"
+    "D: The flockmates' distance 
+  from their own center"
   )
   
   fmt <- function(p) {
@@ -195,7 +195,7 @@ T_test_ESS_analysis<-function(){
           side = 3, line = -0.4, cex = 0.6, col = "grey30")
     
     abline(h = 0, lty = 2, col = "grey70", lwd = 0.8)
-    axis(1, at = x_centres, labels = paste0("flock ", flocks), cex.axis = 0.7)
+    axis(1, at = x_centres, labels = paste0("Flock ", flocks), cex.axis = 0.7)
     
     for (i in seq_along(flocks)) {
       fid      <- flocks[i]
