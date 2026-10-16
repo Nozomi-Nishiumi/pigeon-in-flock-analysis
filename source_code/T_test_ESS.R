@@ -166,8 +166,8 @@ T_test_ESS_analysis<-function(){
   from the flock center",
     "B: The threatened bird's position 
     along high-low axis",
-    "D: The flockmates' distance 
-  from their own center"
+    "D: Non-threatened flockmates'
+  distance from their own center"
   )
   
   fmt <- function(p) {
