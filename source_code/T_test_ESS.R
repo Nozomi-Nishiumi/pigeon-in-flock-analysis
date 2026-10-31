@@ -91,11 +91,8 @@ get_data_properties <- function() {
 
 T_test_ESS_analysis<-function(){
   df <- get_data_properties()
-  savedir=paste0(basedir,"/tables/statistics")
-  dir.create(savedir, recursive = TRUE, showWarnings = FALSE)
-  setwd(savedir)
-  write.csv(df, file = "TableS1_drone_data_properties.csv", row.names = FALSE)
-  
+  tabledir=paste0(basedir,"/tables/statistics")
+  dir.create(tabledir, recursive = TRUE, showWarnings = FALSE)
   savedir=paste0(basedir,"/figures/statistics")
   dir.create(savedir, recursive = TRUE, showWarnings = FALSE)
   setwd(savedir)
@@ -121,31 +118,39 @@ T_test_ESS_analysis<-function(){
     2 * pt(-abs(t_stat), df = nu)
   }
   
-  df$p_value <- NA_real_
+  df$welch_p <- NA_real_
   for (t in unique(df$type)) {
     for (fid in unique(df$flockid)) {
       pre  <- df[df$type == t & df$flockid == fid & df$prepost == "pre",  ]
       post <- df[df$type == t & df$flockid == fid & df$prepost == "post", ]
       if (nrow(pre) == 0 || nrow(post) == 0) next
       # Write the same p-value to both pre and post rows for this type/flock
-      df[df$type == t & df$flockid == fid, "p_value"] <- welch_ess_p(pre, post)
+      df[df$type == t & df$flockid == fid, "welch_p"] <- welch_ess_p(pre, post)
     }
   }
   df$se <- NULL  # temporary column, no longer needed
-  
-  # ── Plot ──────────────────────────────────────────────────────────────────────
-  
-  png("drone_analysis_plot.png", width = 15, height = 15, units = "cm", res = 500)
   
   # Fisher's method: combine the three per-flock p-values into one omnibus test.
   # Use "pre" rows only to avoid counting each p-value twice (pre and post carry
   # the same value).
   fisher_p <- sapply(unique(df$type), function(t) {
-    p_vals <- na.omit(df[df$type == t & df$prepost == "pre", "p_value"])
+    p_vals <- na.omit(df[df$type == t & df$prepost == "pre", "welch_p"])
     if (length(p_vals) == 0) return(NA_real_)
     pchisq(-2 * sum(log(p_vals)), df = 2 * length(p_vals), lower.tail = FALSE)
   })
   names(fisher_p) <- unique(df$type)
+  df$omnibus_p <- unname(fisher_p[df$type])   # same value on every row of a metric
+  
+  # ── Table S1: per-series summary plus the test results shown in the figure ──
+  # welch_p   - ESS-adjusted Welch t-test, pre vs post, per metric and flock
+  #             (identical on the pre and post rows of a pair)
+  # omnibus_p - Fisher combination of the three per-flock welch_p values
+  #             (identical on all six rows of a metric)
+  write.csv(df, file = file.path(tabledir, "TableS1_drone_data_properties.csv"), row.names = FALSE)
+  
+  # ── Plot ──────────────────────────────────────────────────────────────────────
+  
+  png("drone_analysis_plot.png", width = 15, height = 15, units = "cm", res = 500)
   
   types  <- unique(df$type)
   types=types[c(3,1,2,4)]
@@ -219,7 +224,7 @@ T_test_ESS_analysis<-function(){
       
       # Per-flock p-value label near the top of the panel
       y_top <- ylim[2] - diff(ylim) * 0.02
-      text(x_centres[i], y_top, fmt(row_pre$p_value),
+      text(x_centres[i], y_top, fmt(row_pre$welch_p),
            cex = 0.6, adj = c(0.5, 1), col = "grey20")
     }
     

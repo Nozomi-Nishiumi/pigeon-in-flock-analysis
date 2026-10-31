@@ -40,7 +40,7 @@ We attacked flocks of homing pigeons with a drone and examined where individuals
 │
 ├── tables/             # Statistical result tables
 │   └── statistics/
-│       └── TableS1_drone_data_properties.csv   # Per-series ESS, mean, 95% CI, Welch p-value
+│       └── TableS1_drone_data_properties.csv   # Per-series ESS, mean, 95% CI, per-flock Welch p (welch_p), Fisher omnibus p (omnibus_p)
 │
 ├── materials/          # Map data used for rendering
 │   └── map.RData
